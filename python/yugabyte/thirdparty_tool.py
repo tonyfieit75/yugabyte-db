@@ -96,15 +96,15 @@ def parse_args():
     """ Parse command-line arguments """
     parser = argparse.ArgumentParser(description="Download and install third-party dependencies.")
     
-    # Add arguments here, matching the original script's expected arguments
+    # Add arguments here, matching the original script's expected arguments with hyphens
     parser.add_argument("--os_type", type=str, default="ubuntu20.04", help="Operating system type")
     parser.add_argument("--architecture", type=str, default="s390x", help="System architecture")
-    parser.add_argument("--compiler_type", type=str, help="Compiler type")
-    parser.add_argument("--list_compilers", action="store_true", help="List available compilers")
-    parser.add_argument("--save_thirdparty_url_to_file", type=str, help="File to save third-party URL")
-    parser.add_argument("--is_linuxbrew", action="store_true", help="If Linuxbrew is used")
+    parser.add_argument("--compiler-type", type=str, help="Compiler type")
+    parser.add_argument("--list-compilers", action="store_true", help="List available compilers")
+    parser.add_argument("--save-thirdparty-url-to-file", type=str, help="File to save third-party URL")
+    parser.add_argument("--is-linuxbrew", action="store_true", help="If Linuxbrew is used")
     parser.add_argument("--lto", action="store_true", help="Link-time optimization")
-    parser.add_argument("--allow_older_os", action="store_true", help="Allow older OS versions")
+    parser.add_argument("--allow-older-os", action="store_true", help="Allow older OS versions")
     
     return parser.parse_args()
 
