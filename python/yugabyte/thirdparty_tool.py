@@ -6,6 +6,9 @@ import argparse
 def download_and_install_thirdparty(args):
     """ Main function to download and install third-party dependencies for s390x """
 
+    # Convert the string '0' or '1' to a boolean for is_linuxbrew
+    args.is_linuxbrew = bool(int(args.is_linuxbrew))
+
     # Load metadata
     metadata = load_metadata()
     manual_metadata = load_manual_metadata()
@@ -102,7 +105,7 @@ def parse_args():
     parser.add_argument("--compiler-type", type=str, help="Compiler type")
     parser.add_argument("--list-compilers", action="store_true", help="List available compilers")
     parser.add_argument("--save-thirdparty-url-to-file", type=str, help="File to save third-party URL")
-    parser.add_argument("--is-linuxbrew", action="store_true", help="If Linuxbrew is used")
+    parser.add_argument("--is-linuxbrew", type=str, help="If Linuxbrew is used (0 or 1)")  # Accepts 0 or 1 as string
     parser.add_argument("--lto", action="store_true", help="Link-time optimization")
     parser.add_argument("--allow-older-os", action="store_true", help="Allow older OS versions")
     
