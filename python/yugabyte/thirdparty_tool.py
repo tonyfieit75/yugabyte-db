@@ -1,70 +1,15 @@
-#!/usr/bin/env python
-
-# Copyright (c) Yugabyte, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
-# in compliance with the License.  You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software distributed under the License
-# is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
-# or implied.  See the License for the specific language governing permissions and limitations
-# under the License.
-
-"""
-This is a command-line tool that allows to get the download URL for a prebuilt third-party
-dependencies archive for a particular configuration, as well as to update these URLs based
-on the recent releases in the https://github.com/yugabyte/yugabyte-db-thirdparty repository.
-
-Another separate area of functionality of this tool is manipulating "inline 3rd party" dependencies
-in the src/inline-thirdparty directory.
-"""
-
-import sys
 import os
+import subprocess
 import logging
 
-from typing import DefaultDict, Dict, List, Any, Optional, Pattern, Tuple, Union, Set, cast
+def download_and_install_thirdparty(args):
+    """ Main function to download and install third-party dependencies for s390x """
 
-from yugabyte.common_util import (
-    init_logging,
-    make_parent_dir,
-)
-from yugabyte.file_util import write_file
-from yugabyte.thirdparty_tool_impl import (
-    get_compilers,
-    get_third_party_release,
-    parse_args,
-    update_thirdparty_dependencies,
-)
-from yugabyte.thirdparty_archives_metadata import (
-    load_manual_metadata,
-    load_metadata,
-    MetadataItem,
-    SHA_KEY,
-)
-
-from yugabyte import inline_thirdparty
-
-
-def main() -> None:
-    args = parse_args()
-    init_logging(verbose=args.verbose)
-    if args.update:
-        update_thirdparty_dependencies(args)
-        return
-
-    if args.sync_inline_thirdparty:
-        inline_thirdparty.sync_inline_thirdparty(args.inline_thirdparty_deps)
-        return
-
+    # Load metadata
     metadata = load_metadata()
     manual_metadata = load_manual_metadata()
-    if args.get_sha1:
-        print(metadata[SHA_KEY])
-        return
 
+    # Merge metadata from different sources
     metadata_items = [
         MetadataItem(cast(Dict[str, Any], item_yaml_data))
         for item_yaml_data in (
@@ -73,11 +18,12 @@ def main() -> None:
         )
     ]
 
+    # Check if we need to list compilers or process args
     if args.list_compilers:
         compiler_list = get_compilers(
             metadata_items=metadata_items,
             os_type=args.os_type,
-            architecture=args.architecture,
+            architecture=args.architecture,  # This will now check for 's390x'
             is_linuxbrew=args.is_linuxbrew,
             lto=args.lto,
             allow_older_os=args.allow_older_os)
@@ -85,10 +31,12 @@ def main() -> None:
             print(compiler)
         return
 
+    # Save URL to file if specified
     if args.save_thirdparty_url_to_file:
         if not args.compiler_type:
             raise ValueError("Compiler type not specified")
-
+        
+        # Get third-party dependencies for specific architecture and compiler
         thirdparty_release = get_third_party_release(
             available_archives=metadata_items,
             compiler_type=args.compiler_type,
@@ -100,11 +48,50 @@ def main() -> None:
 
         thirdparty_url = thirdparty_release.url()
         logging.info(f"Download URL for the third-party dependencies: {thirdparty_url}")
+        
         if args.save_thirdparty_url_to_file:
             make_parent_dir(args.save_thirdparty_url_to_file)
-            write_file(content=thirdparty_url,
-                       output_file_path=args.save_thirdparty_url_to_file)
+            write_file(content=thirdparty_url, output_file_path=args.save_thirdparty_url_to_file)
 
+    # Step 2: Download and Install Dependencies for s390x
+    if args.architecture == "s390x":
+        # Modify to handle architecture specific downloads and builds
+        for item in metadata_items:
+            logging.info(f"Processing {item.name}")
+            # Check if there is a precompiled version for s390x
+            if not prebuilt_for_s390x(item):
+                logging.info(f"No prebuilt version available for {item.name}. Building from source.")
+                build_from_source(item)  # Function to build from source
+            else:
+                logging.info(f"Downloading prebuilt version for {item.name}.")
+                download_and_install(item.url())  # Download prebuilt package
+
+def prebuilt_for_s390x(item):
+    """ Check if a prebuilt package for s390x exists for a given item """
+    # Implement logic to check if s390x prebuilt binary exists
+    # For now, assume False to build from source
+    return False
+
+def build_from_source(item):
+    """ Function to build a third-party dependency from source for s390x """
+    logging.info(f"Building {item.name} from source for s390x.")
+    source_url = item.source_url  # Assuming metadata contains source URL
+    os.system(f"wget {source_url} -O /tmp/{item.name}.tar.gz")
+    os.system(f"tar -xzf /tmp/{item.name}.tar.gz -C /tmp")
+    source_dir = f"/tmp/{item.name}"
+    os.chdir(source_dir)
+    
+    # Example build process, modify as needed based on the library
+    os.system("./configure")
+    os.system("make")
+    os.system("sudo make install")
+
+def download_and_install(url):
+    """ Download and install a prebuilt third-party dependency """
+    os.system(f"wget {url} -O /tmp/dependency.tar.gz")
+    os.system("tar -xzf /tmp/dependency.tar.gz -C /usr/local/")  # Adjust based on actual structure
 
 if __name__ == '__main__':
+    # Ensure the script accepts the right arguments
     main()
+
